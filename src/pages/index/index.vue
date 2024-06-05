@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import * as ai302Api from "@/api/ai302";
 
 const img = ref<ImgFile>();
 
@@ -36,7 +37,107 @@ function onPickImg() {
   });
 }
 
-function onGenImg() {}
+async function onGenImg() {
+  if (!img.value) {
+    return uni.showToast({
+      title: "please pick img first",
+      icon: "none",
+    });
+  }
+
+  try {
+    uni.showLoading({});
+
+    // 超时响应：
+    // {
+    //     "completed_at": "",
+    //     "created_at": "2024-06-05T16:20:39.444Z",
+    //     "error": "",
+    //     "id": "17176044394419",
+    //     "model": "removebg",
+    //     "output": "",
+    //     "started_at": "",
+    //     "status": "starting"
+    // }
+
+    // 正常响应：
+    // {
+    //     "completed_at": "2024-06-05T16:23:23.111283Z",
+    //     "created_at": "2024-06-05T16:20:39.444Z",
+    //     "error": "",
+    //     "id": "17176044394419",
+    //     "model": "removebg",
+    //     "output": "https://file.302.ai/gpt/imgs/20240605/7862f8b44a18430caf4e2df69f1cf0b2.png",
+    //     "started_at": "2024-06-05T16:23:12.501563Z",
+    //     "status": "succeeded"
+    // }
+
+    let res = await ai302Api.removeBg(img.value);
+    console.log("removeBg res: ", res);
+    // 说明 30s 内没有生成成功，执行 fetch 查询
+    if (res.status == "starting") {
+      console.log("removeBg timeout, startFetchTimer");
+      res = await startFetchTimer(res.id);
+      console.log("fetch res: ", res);
+    }
+    uni.hideLoading();
+
+    // 说明最终结果没有成功
+    if (isAiResSuccess(res)) {
+      showResImg(res.output);
+    } else {
+      uni.showToast({
+        title: "removeBg fail",
+        icon: "error",
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    uni.hideLoading();
+    uni.showToast({
+      title: "error happen..",
+      icon: "error",
+    });
+  }
+}
+
+function startFetchTimer(id: string): Promise<AiTaskResult> {
+  // ai302Api.fetchTaskResult("17176044394419");
+  const intervalTime = 5000;
+  const fetchMaxCount = 6;
+  let fetchCount = 0;
+
+  return new Promise((resolve, reject) => {
+    // 开启定时器，每5s查询一次
+    const intervalId = setInterval(async () => {
+      try {
+        const res = await ai302Api.fetchTaskResult(id);
+        console.log(`fetch success, fetchCount = ${fetchCount}, res = `, res);
+        if (isAiResSuccess(res) || fetchCount >= fetchMaxCount) {
+          // 结果成功，或者 达到查询最大次数，就把结果返回，关闭定时器
+          clearInterval(intervalId);
+          resolve(res);
+        } else {
+          // 结果还未成功，继续查询
+          fetchCount++;
+        }
+      } catch (error) {
+        console.log(`fetch error, fetchCount = ${fetchCount}, error = `, error);
+        // 报错了，关闭定时器
+        clearInterval(intervalId);
+        reject(error);
+      }
+    }, intervalTime);
+  });
+}
+
+function isAiResSuccess(res: AiTaskResult): boolean {
+  return res != null && res.status == "succeeded";
+}
+
+function showResImg(resImg: string) {
+  console.log(`showResImg, resImg = ${resImg}`);
+}
 </script>
 
 <style lang="scss">
