@@ -5,14 +5,17 @@
       <image v-if="img" class="img" :src="img.path" mode="aspectFit" />
     </view>
     <view class="gen-btn" @click="onGenImg">生成证件照</view>
+    <PhotoDialog ref="photoDialog" />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
 import * as ai302Api from "@/api/ai302";
+import PhotoDialog from "@/components/photo-dialog/photo-dialog.vue";
 
 const img = ref<ImgFile>();
+const photoDialog = ref();
 
 function onPickImg() {
   uni.chooseImage({
@@ -38,6 +41,12 @@ function onPickImg() {
 }
 
 async function onGenImg() {
+  // if (true) {
+  //   return showResImg(
+  //     "https://file.302.ai/gpt/imgs/20240605/7862f8b44a18430caf4e2df69f1cf0b2.png"
+  //   );
+  // }
+
   if (!img.value) {
     return uni.showToast({
       title: "please pick img first",
@@ -137,6 +146,7 @@ function isAiResSuccess(res: AiTaskResult): boolean {
 
 function showResImg(resImg: string) {
   console.log(`showResImg, resImg = ${resImg}`);
+  photoDialog.value?.show(resImg);
 }
 </script>
 
