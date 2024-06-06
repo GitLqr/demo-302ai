@@ -1,5 +1,5 @@
 <template>
-  <uni-popup ref="popup" type="dialog">
+  <uni-popup ref="popup" type="dialog" @maskClick="dismiss">
     <view class="photo-dialog">
       <!-- 证件照 -->
       <!-- <image
@@ -19,7 +19,6 @@
         :id="canvasId"
         @error="onCanvasError"
       />
-
       <!-- 颜色列表 -->
       <view class="color-list">
         <view
@@ -31,6 +30,8 @@
           @click="onColorClick(item)"
         />
       </view>
+      <!-- 保存按钮 -->
+      <view class="save-btn" @click="onSaveClick">保存</view>
     </view>
   </uni-popup>
 </template>
@@ -49,6 +50,7 @@ const colorList = ref(["#FF0000", "#438EDB", "#FFFFFF"]);
 const img = ref();
 const imgBg = ref(colorList.value[0]);
 watch([img, imgBg], () => {
+  // console.log(`watch img = ${img.value}, bg = ${imgBg.value}`);
   if (img.value && imgBg.value) {
     // 需要延时保证 canvas 加载完成
     setTimeout(() => {
@@ -80,14 +82,83 @@ function onColorClick(color: string) {
   imgBg.value = color;
 }
 
+function onSaveClick() {
+  uni.canvasToTempFilePath({
+    canvasId: canvasId,
+    success: (res) => {
+      // 除了H5 操作
+      // #ifndef H5
+      uni.saveImageToPhotosAlbum({
+        filePath: res.tempFilePath,
+        success(res) {
+          uni.showToast({
+            title: "保存成功",
+            icon: "none",
+          });
+        },
+        fail(err) {
+          uni.showToast({
+            title: "保存失败",
+            icon: "none",
+          });
+          console.log("err", err);
+        },
+      });
+      // #endif
+      // #ifdef H5
+      var arr = res.tempFilePath.split(",");
+      var bytes = atob(arr[1]);
+      let ab = new ArrayBuffer(bytes.length);
+      let ia = new Uint8Array(ab);
+      for (let i = 0; i < bytes.length; i++) {
+        ia[i] = bytes.charCodeAt(i);
+      }
+      var blob = new Blob([ab], {
+        type: "application/octet-stream",
+      });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = new Date().valueOf() + ".png";
+      var e = document.createEvent("MouseEvents");
+      e.initMouseEvent(
+        "click",
+        true,
+        false,
+        window,
+        0,
+        0,
+        0,
+        0,
+        0,
+        false,
+        false,
+        false,
+        false,
+        0,
+        null
+      );
+      a.dispatchEvent(e);
+      URL.revokeObjectURL(url);
+      // #endif
+    },
+    fail: (res) => {
+      uni.showToast({
+        title: "save fail",
+        icon: "none",
+      });
+    },
+  });
+}
+
 function show(resImg: string) {
   popup.value.open();
   img.value = resImg;
 }
 
 function dismiss() {
-  popup.value.close();
   img.value = undefined;
+  popup.value.close();
 }
 
 defineExpose({
@@ -116,6 +187,17 @@ defineExpose({
       width: 100rpx;
       height: 100rpx;
     }
+  }
+  .save-btn {
+    margin-top: 20rpx;
+    width: 400rpx;
+    height: 60rpx;
+    color: white;
+    background-color: #22a5f1;
+    border-radius: 10rpx;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 }
 </style>
