@@ -55,7 +55,9 @@ async function onGenImg() {
   }
 
   try {
-    uni.showLoading({});
+    uni.showLoading({
+      title: "loading",
+    });
 
     // 超时响应：
     // {
@@ -91,10 +93,11 @@ async function onGenImg() {
     }
     uni.hideLoading();
 
-    // 说明最终结果没有成功
     if (isAiResSuccess(res)) {
+      // 显示最终结果
       showResImg(res.output);
     } else {
+      // 说明最终结果没有成功
       uni.showToast({
         title: "removeBg fail",
         icon: "error",
@@ -113,7 +116,7 @@ async function onGenImg() {
 function startFetchTimer(id: string): Promise<AiTaskResult> {
   // ai302Api.fetchTaskResult("17176044394419");
   const intervalTime = 5000;
-  const fetchMaxCount = 6;
+  const fetchMaxCount = 20;
   let fetchCount = 0;
 
   return new Promise((resolve, reject) => {
